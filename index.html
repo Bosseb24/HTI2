@@ -5,15 +5,19 @@
 <title>PLZ-Kalkulator</title>
 <style>
 body { font-family: Arial, sans-serif; padding: 20px; }
-input, button { padding: 8px; margin: 5px 0; }
-#result { margin-top: 10px; font-weight: bold; }
+input, button { padding: 8px; margin: 5px 0; font-size: 14px; }
+#result { margin-top: 15px; font-weight: bold; font-size: 16px; color: #333; }
 </style>
+<link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 <h2>PLZ eingeben</h2>
 <input id="plzInput" placeholder="z. B. 10115" type="text"/>
-<button onclick="findKalkulator()">Kalkulator anzeigen</button>
+<button onclick="starteSuche()">Kalkulator anzeigen</button>
 <div id="result"></div>
+
+<div id="map" style="height: 400px; margin-top: 20px;"></div>
 
 <script>
 const plzData = {
@@ -129,45 +133,46 @@ const plzData = {
 "19309": "Eugen", "19322": "Eugen", "19336": "Eugen", "19339": "Eugen", "19348": "Eugen", "19357": "Eugen"
 };
 
-function findKalkulator() {
-const input = document.getElementById("plzInput").value.trim();
-const result = plzData[input];
-document.getElementById("result").textContent = result
-? `Kalkulator: ${result}`
-: "Keine Zuordnung gefunden.";
-}
-</script>
+let map;
+let marker;
 
-<link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-<div id="map" style="height: 400px; margin-top: 20px;"></div>
-
-<script>
 function initMap() {
-var map = L.map("map").setView([52.5, 13.4], 9);
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-attribution: 'Map data © <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
-}).addTo(map);
-
-document.getElementById('plzInput').addEventListener('change', function() {
-var plz = this.value;
-fetch('https://nominatim.openstreetmap.org/search?postalcode=' + plz + '&country=Germany&format=json')
-.then(response => response.json())
-.then(data => {
-if (data.length > 0) {
-var lat = data[0].lat;
-var lon = data[0].lon;
-map.setView([lat, lon], 12);
-L.marker([lat, lon]).addTo(map)
-.bindPopup('PLZ: ' + plz)
-.openPopup();
-} else {
-alert('PLZ nicht gefunden.');
+    map = L.map("map").setView([52.5, 13.4], 9);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: 'Map data © <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
+    }).addTo(map);
 }
-});
-});
+
+function starteSuche() {
+    const input = document.getElementById("plzInput").value.trim();
+    
+    // 1. Zuordnung prüfen
+    const result = plzData[input];
+    document.getElementById("result").textContent = result 
+        ? "Kalkulator: " + result 
+        : "Keine Zuordnung gefunden.";
+
+    // 2. Karte aktualisieren
+    if (input !== "") {
+        fetch('https://nominatim.openstreetmap.org/search?postalcode=' + input + '&country=Germany&format=json')
+        .then(response => response.json())
+        .then(data => {
+            if (data.length > 0) {
+                var lat = data[0].lat;
+                var lon = data[0].lon;
+                map.setView([lat, lon], 12);
+                
+                if (marker) {
+                    map.removeLayer(marker);
+                }
+                
+                marker = L.marker([lat, lon]).addTo(map)
+                    .bindPopup('PLZ: ' + input)
+                    .openPopup();
+            }
+        })
+        .catch(error => console.log("Karte konnte nicht geladen werden:", error));
+    }
 }
 
 window.onload = initMap;
